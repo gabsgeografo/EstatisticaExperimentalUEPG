@@ -1,0 +1,28 @@
+data MILHO; /*nomeia o arquivo*/
+input ALTURA_1 ALTURA_2; /*insere os dados*/
+cards;  
+203 203
+208 198
+198 199
+200 200
+202 201
+192 202
+197 197
+;
+proc means data=MILHO; /*calcula as médias*/
+run;
+
+proc means n std var lclm uclm cv stderr alpha=0.01 data=MILHO; /*faz as estatisticas*/
+run;
+
+proc corr data=MILHO;
+var ALTURA_1 ALTURA_2;
+run;
+
+PROC gplot data=MILHO;  /*plota o gráfico*/
+plot ALTURA_1*ALTURA_2;
+run; 
+
+proc reg data=MILHO;
+model ALTURA_1 = ALTURA_2;
+run;
