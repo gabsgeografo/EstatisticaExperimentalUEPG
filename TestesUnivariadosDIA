@@ -29,13 +29,11 @@ dados$rep <- as.factor(dados$rep)
 
 #' # Análise Exploratória
 library(ggplot2)
-ggplot(dados, 
-       aes(x = trat, y = y)) +
+ggplot(dados, aes(x = trat, y = y)) +
   geom_point()
 
 ggplot(dados, 
-       aes(x = trat, y = y, 
-           color = trat)) +
+       aes(x = trat, y = y, color = trat)) +
   geom_point(stat = "summary", fun = mean)
 
 ggplot(dados, 
@@ -83,8 +81,7 @@ ggplot(dados, aes(sample = y))+
 
 # Usando o pacote ExpDes.pt
 library(ExpDes.pt)
-dic(trat,y,quali = TRUE,mcomp = "tukey",
-  nl = FALSE,hvar = "bartlett",sigT = 0.05,sigF = 0.05)
+dic(trat,y,quali = TRUE,mcomp = "tukey", nl = FALSE,hvar = "bartlett",sigT = 0.05,sigF = 0.05)
 
 # Gráfico de comparação de médias (tukey)
 library(agricolae)
@@ -94,10 +91,10 @@ HSD <- with(dados,
                      DFerror = modelo$df.residual,
                      MSerror = anova(modelo)$`Mean Sq`[2],
                      alpha = 0.05))
+
 HSD
 plot(HSD, las = 1)
 box()
-
 
 #' # Teste de Dunnet
 #' - Usando a biblioteca multcomp
