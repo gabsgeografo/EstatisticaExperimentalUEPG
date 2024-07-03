@@ -1,0 +1,136 @@
+#' ---
+#' title: "Experimentação Agronômica UEPG 2024/1"
+#' subtitle: "Contrastes ortogonais e transformação de dados"
+#' professor: Dr. Carlos Tadeu S Dias (ESALQ/USP)
+#' aluno: Gabriel Passos
+#' date: "07-03-2024"
+#'---
+
+#' # Carregando os dados em formato csv
+dados <- read.csv2("dados.csv", header=T)
+
+# Faz os tratamentos de repetição
+trat <- rep(c("A", "B", "C","D"), times = 5)
+rep <- rep(1:5,each = 4)
+dados <- data.frame(trat,rep,y)
+
+#' # Análise de variância - ANOVA
+modelo <- aov(y ~ trat, data = dados) 
+anova(modelo)
+
+#' # Criando os contrastes
+library(multcomp)
+str(dados)
+
+dados$trat <- as.factor(dados$trat)
+
+#'  Do exemplo do Milho (visto nos exercicios), verificou-se que "A" e "B" são de origem européia e "C" e "D" 
+#'  americana. Interessa comparar esses 2 grupos de tratamentos, bem como 
+
+#'  Comparar dentro de cada grupo.
+dados$trat <- as.factor(dados$trat)
+contrastes <- rbind("A+B-C-D" = c(1,1,-1,-1), 
+                    "A-B" = c(1,-1,0,0),
+                    "C-D" = c(0,0,1,-1))
+
+#' # Verificando a ortogonalidade
+j <- 5
+a1b2 <- (1/j)*sum(contrastes[1,]*contrastes[2,]); a1b2
+a1b3 <- (1/j)*sum(contrastes[1,]*contrastes[3,]); a1b3
+a2b3 <- (1/j)*sum(contrastes[2,]*contrastes[2,]); a2b3
+
+#' RESPOSTA: São ortogonais entre si
+
+
+contrastes1 <- glht(aov(y ~ trat, dados),
+                 linfct = mcp(trat = contrastes),
+                 alternative = "two.sided")
+res <- summary(contrastes1)
+res 
+plot(contrastes1)
+
+#' # Soma de quadrados do contraste (SQ-Contraste)
+res1 <- as.data.frame(res$test$coefficients[1])
+est <- res1$`res$test$coefficients[1]`
+
+res2 <- as.data.frame(res$test$coefficients[2])
+est2 <- res2$`res$test$coefficients[2]`
+
+res3 <- as.data.frame(res$test$coefficients[3])
+est3 <- res3$`res$test$coefficients[3]`
+
+repet <- 5
+
+# Calcula os SQs
+SQ.Y1 <- ((repet*est)^2)/(repet*(1^2+1^2+(-1)^2+(-1)^2))
+SQ.Y2 <- ((repet*est2)^2)/(repet*(1^2+(-1)^2))
+SQ.Y3 <- ((repet*est3)^2)/(repet*(1^2+(-1)^2))
+
+# Calcula a Soma dos Quadrados dos Tratamentos
+SQtrat <- SQ.Y1 + SQ.Y2 + SQ.Y3
+
+# Conferindo com o programa
+res$model
+
+#' # Exemplo de trasnformação de dados
+head(iris)
+modelo <- lm(Petal.Length ~ Species, data = iris)
+
+
+#' # Resíduos observados graficamente
+library(ggplot2)
+y.pred <- modelo$fitted.values
+res.pad <- rstandard(modelo)
+
+ggplot(iris, aes(x = y.pred, y = res.pad))+
+  geom_point()+
+  geom_hline(yintercept = 0)
+
+ggsave("fig1.png", dpi = 500)
+
+ggplot(iris, aes(sample = Petal.Length))+
+  stat_qq() + 
+  stat_qq_line() +
+  xlab("Quantis normais") +
+  ylab("Petal Length (cm)")
+
+
+
+shapiro.test(residuals(modelo)) # Testa a Normalidade
+bartlett.test(res.pad ~ Species, data = iris) # Testa a Homogeneidade
+
+#' Há a necessidade de transformação de dados, 
+#' tanto em função de não normalidade quanto pela
+#' falta de homogeneidade de variâncias.
+
+library(MASS)
+boxcox(Petal.Length ~ Species, data = iris)
+
+#'Sugere-se transformar os dados, elevando-os à 0.01
+
+iris$Petal.Length_2 <- iris$Petal.Length^0.1
+
+
+#' analisando novamente, temos:
+modelo2 <- lm(iris$Petal.Length_2 ~ Species, data = iris)
+
+y.pred2 <- modelo2$fitted.values
+res.pad2 <- rstandard(modelo2)
+
+ggplot(iris, aes(x = y.pred2, y = res.pad2))+
+  geom_point()+
+  geom_hline(yintercept = 0)
+
+
+ggplot(iris, aes(sample = Petal.Length_2))+
+  stat_qq() + 
+  stat_qq_line() +
+  xlab("Quantis normais") +
+  ylab("Petal Length transformada (cm)")
+
+# Testa a Normalidade
+shapiro.test(residuals(modelo2)) 
+
+# Testa a homogeneidade
+bartlett.test(res.pad2 ~ Species, data = iris)
+
