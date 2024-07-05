@@ -1,0 +1,155 @@
+#' ---
+#' title: "Experimentação Agronômica UEPG 2024"
+#' subtitle: Delineamento Inteiramente Aleatorizado
+#' date: "2024-03-07"
+#'---
+
+
+#' # Carregando os dados diretamente no R
+y <- c(25, 31, 22, 33,
+          26, 25, 26, 29,
+          20, 28, 28, 31,
+          23, 27, 25, 34,
+          21, 24, 29, 28)
+
+trat <- rep(c("A", "B", "C","D"), times = 5)
+rep <- rep(1:5,each = 4)
+dados <- data.frame(trat,rep,y)
+
+write.table(dados, "dados.csv", sep=";", row.names = F)
+getwd()
+
+#' # Importando os dados de um arquivo no computador
+dados <- read.csv2("dados.csv", header = T);head(dados)
+str(dados)
+dados$trat <- as.factor(dados$trat)
+dados$rep <- as.factor(dados$rep)
+
+
+#' # Análise Exploratória
+library(ggplot2)
+ggplot(dados, 
+       aes(x = trat, 
+           y = y)) +
+  geom_point()
+
+ggplot(dados, 
+       aes(x = trat, 
+           y = y, 
+           color = trat)) +
+  geom_point(stat = "summary",
+             fun = mean)
+
+ggplot(dados, 
+       aes(x = trat, 
+           y = y, 
+           fill = trat)) +
+  geom_bar(stat = "summary",
+           fun = mean)+
+  theme_bw() +
+  xlab("Tratamentos") +
+  ylab("Produção (kg)")
+
+
+#' # Análise de variância
+modelo <- aov(y ~ trat, data = dados) 
+anova(modelo)
+
+par(mfrow=c(2,2))
+plot(modelo)
+par(mfrow=c(1,1))
+
+
+#' # Testando as pressuposições
+#' ## Normalidade
+shapiro.test(residuals(modelo))
+
+#' Não rejeitamos H0. Portanto,os resíduos podem ser considerados 
+#' normais.
+
+#' ## Homogeneidade de variância
+res.pad <- rstandard(modelo)
+bartlett.test(res.pad ~ trat, data = dados)
+
+#' Não rejeitamos H0. Portanto,os resíduos podem ser considerados 
+#' Homogênos.
+
+#' # Resíduos observados graficamente
+library(ggplot2)
+y.pred <- modelo$fitted.values
+ggplot(dados, aes(x = y.pred, y = res.pad))+
+  geom_point()+
+  geom_hline(yintercept = 0)
+
+
+ggplot(dados, aes(sample = y))+
+  stat_qq() + 
+  stat_qq_line() +
+  xlab("Quantis normais") +
+  ylab("Produção (kg)")
+
+
+
+#' # Usando pacotes para realizar as análises
+
+# Usando o pacote ExpDes.pt
+library(ExpDes.pt)
+dic(trat,y,quali = TRUE,mcomp = "tukey",
+  nl = FALSE,hvar = "bartlett",sigT = 0.05,sigF = 0.05)
+
+# Gráfico de comparação de médias (tukey)
+library(agricolae)
+HSD <- with(dados,
+            HSD.test(y = y, 
+                     trt = trat,
+                     DFerror = modelo$df.residual,
+                     MSerror = anova(modelo)$`Mean Sq`[2],
+                     alpha = 0.05))
+HSD
+plot(HSD, las = 1)
+box()
+
+
+#' # Teste de Dunnet
+#' - Usando a biblioteca multcomp
+#' Apenas possível se os níveis do fator são não numéricos
+library(multcomp)
+str(dados)
+dados$trat <- as.factor(dados$trat)
+
+Dunnett <- glht(aov(y ~ trat, dados),
+                 linfct = mcp(trat =c(    "B-A == 0",
+                                          "C-A == 0",
+                                          "D-A == 0")))
+summary(Dunnett)
+plot(Dunnett)
+
+library(AgroR)
+dev.off()
+with(dados, DIC(trat, y, ylab = "Produção de milho em kg/100m^2")) # tukey
+with(dados, DIC(trat, y, mcomp = "sk", ylab = "Produção de milho em kg/100m^2"))
+with(dados, DIC(trat, y, mcomp = "duncan", ylab = "Produção de milho em kg/100m^2"))
+
+#=============================
+# Kruskal-Wallis
+#=============================
+#with(pomegranate, DIC(trat, y, test = "noparametric", ylab = "Produção de milho em kg/100m^2"))
+
+
+# Outro exemplo
+y <- c(2.7, 1.8, 3.1,
+       2.7, 3.5, 3.7,
+       3.2, 4.5, 3.5,
+       4.6, 2.7, 3.6)
+trat <- rep(c("t1","t2","t3"),4);trat
+rep <- rep(1:4, each = 3);rep
+dados <- data.frame(trat,rep,y);dados
+dados$trat <- as.factor(dados$trat)
+dados$rep <- as.factor(dados$rep)
+
+str(dados)
+
+
+result <- with(dados, DIC(trat, y, test = "noparametric", ylab = "Produção"))
+kruskal.test(y ~ trat, data = dados)
+
